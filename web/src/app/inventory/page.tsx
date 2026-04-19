@@ -1,52 +1,137 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppSidebar } from "@/components/layout/Navbar";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useSession } from "@/lib/auth-client";
 import { formatINR, formatDate } from "@/lib/utils";
 import {
-  Wallet, ArrowUpRight, ArrowDownLeft, Plus,
-  CreditCard, Banknote, RefreshCcw, X, CheckCircle2, AlertCircle
+  Banknote, ArrowUpRight, ArrowDownLeft, CreditCard,
+  RefreshCcw, X, CheckCircle2, AlertCircle
 } from "lucide-react";
 
 interface UserProfile { id: string; name: string; inrBalance: number; }
 
+// Extend window for Razorpay
+declare global {
+  interface Window { Razorpay: any; }
+}
+
+// ─── Load Razorpay checkout.js once ──────────────────────────────────────────
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (window.Razorpay) { resolve(true); return; }
+    const script   = document.createElement("script");
+    script.src     = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async   = true;
+    script.onload  = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+}
+
 // ─── Withdraw Modal ───────────────────────────────────────────────────────────
 function WithdrawModal({
   balance,
+  userName,
   onClose,
   onSuccess,
 }: {
-  balance: number;
-  onClose: () => void;
-  onSuccess: (newBal: number, upi: string, amount: number) => void;
+  balance:   number;
+  userName:  string;
+  onClose:   () => void;
+  onSuccess: (newBal: number, upi: string, amount: number, paymentId: string) => void;
 }) {
-  const [upiId, setUpiId]     = useState("");
-  const [amount, setAmount]   = useState("");
+  const [upiId,   setUpiId]   = useState("");
+  const [amount,  setAmount]  = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState("");
+  const [error,   setError]   = useState("");
 
-  const handleWithdraw = async () => {
+  const openRazorpay = async () => {
     setError("");
     const amt = parseFloat(amount);
-    if (!upiId.trim()) { setError("Please enter a UPI ID"); return; }
-    if (!amt || amt <= 0) { setError("Enter a valid amount"); return; }
-    if (amt > balance) { setError(`Max ₹${balance.toFixed(2)} available`); return; }
+    if (!upiId.trim())                          { setError("Enter your UPI ID"); return; }
+    if (!/^[\w.\-]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim())) {
+      setError("Invalid UPI ID (e.g. name@upi)"); return;
+    }
+    if (!amt || amt <= 0)                        { setError("Enter a valid amount"); return; }
+    if (amt > balance)                           { setError(`Max ₹${balance.toFixed(2)} available`); return; }
+    if (amt < 1)                                 { setError("Minimum withdrawal is ₹1"); return; }
 
     setLoading(true);
     try {
-      const res  = await fetch("/api/withdraw", {
+      // 1. Load Razorpay script
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error("Failed to load Razorpay. Check your internet connection.");
+
+      // 2. Create order on backend
+      const orderRes  = await fetch("/api/razorpay/create-order", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ upiId: upiId.trim(), amount: amt }),
+        body:    JSON.stringify({ amount: amt, upiId: upiId.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) { setError(data.error || "Withdrawal failed"); return; }
-      onSuccess(data.newBalance, upiId.trim(), amt);
-    } catch {
-      setError("Network error — try again");
-    } finally {
+      const orderData = await orderRes.json();
+      if (!orderRes.ok || !orderData.orderId) {
+        throw new Error(orderData.error || "Failed to create payment order");
+      }
+
+      // 3. Open Razorpay checkout
+      const rzp = new window.Razorpay({
+        key:         orderData.keyId,
+        amount:      orderData.amount,     // paise
+        currency:    "INR",
+        name:        "SwyftPay",
+        description: `₹${amt} withdrawal to ${upiId.trim()}`,
+        order_id:    orderData.orderId,
+        image:       "/logo.png",
+        theme:       { color: "#000000" },
+        prefill: {
+          // Pre-fill UPI so user doesn't have to type it again
+          vpa:     upiId.trim(),
+          name:    userName,
+        },
+        modal: {
+          ondismiss: () => { setLoading(false); },
+        },
+        handler: async (response: {
+          razorpay_order_id:   string;
+          razorpay_payment_id: string;
+          razorpay_signature:  string;
+        }) => {
+          // 4. Verify payment on backend + deduct balance
+          try {
+            const verifyRes  = await fetch("/api/razorpay/verify", {
+              method:  "POST",
+              headers: { "Content-Type": "application/json" },
+              body:    JSON.stringify({
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature:  response.razorpay_signature,
+                amount:  amt,
+                upiId:   upiId.trim(),
+              }),
+            });
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok || !verifyData.success) {
+              throw new Error(verifyData.error || "Payment verification failed");
+            }
+            onSuccess(verifyData.newBalance, upiId.trim(), amt, response.razorpay_payment_id);
+          } catch (e: any) {
+            setError(e.message);
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
+
+      rzp.on("payment.failed", (resp: any) => {
+        setError(`Payment failed: ${resp.error?.description || "Unknown error"}`);
+        setLoading(false);
+      });
+
+      rzp.open();
+    } catch (e: any) {
+      setError(e.message);
       setLoading(false);
     }
   };
@@ -57,21 +142,18 @@ function WithdrawModal({
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <Card className="w-full max-w-md p-8 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-white/30 hover:text-white/60 transition-colors"
-        >
+        <button onClick={onClose} className="absolute top-4 right-4 text-white/30 hover:text-white/60">
           <X size={18} />
         </button>
 
         <h2 className="text-lg font-semibold text-white mb-1">Withdraw to UPI</h2>
         <p className="text-xs text-white/35 mb-6">
-          Admin UPI <span className="font-mono text-white/50">8336885355@upi</span> →  your UPI
+          Powered by <span className="text-white/60 font-medium">Razorpay</span> — secure instant transfer
         </p>
 
         {/* Balance */}
-        <div className="bg-white/[0.04] rounded-xl p-4 mb-6 flex justify-between items-center">
-          <span className="text-sm text-white/40">Available</span>
+        <div className="bg-white/[0.04] rounded-xl p-4 mb-5 flex justify-between items-center">
+          <span className="text-sm text-white/40">Available balance</span>
           <span className="text-lg font-bold text-white">{formatINR(balance)}</span>
         </div>
 
@@ -79,7 +161,7 @@ function WithdrawModal({
         <label className="block text-xs text-white/40 mb-2">Your UPI ID</label>
         <input
           type="text"
-          placeholder="yourname@upi"
+          placeholder="yourname@paytm / @ybl / @upi"
           value={upiId}
           onChange={(e) => setUpiId(e.target.value)}
           className="w-full bg-white/[0.06] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/20 mb-4"
@@ -96,7 +178,7 @@ function WithdrawModal({
             onChange={(e) => setAmount(e.target.value)}
             min={1}
             max={balance}
-            className="w-full bg-white/[0.06] border border-white/[0.08] rounded-xl pl-8 pr-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/20"
+            className="w-full bg-white/[0.06] border border-white/[0.08] rounded-xl pl-8 pr-16 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/20"
           />
           <button
             onClick={() => setAmount(balance.toFixed(2))}
@@ -106,7 +188,6 @@ function WithdrawModal({
           </button>
         </div>
 
-        {/* Error */}
         {error && (
           <div className="flex items-center gap-2 text-red-400 text-xs mb-4">
             <AlertCircle size={14} /> {error}
@@ -114,49 +195,62 @@ function WithdrawModal({
         )}
 
         <Button
-          onClick={handleWithdraw}
+          onClick={openRazorpay}
           disabled={loading}
           size="lg"
-          className="w-full bg-white hover:bg-white/90 text-black"
+          className="w-full bg-white hover:bg-white/90 text-black font-semibold"
         >
-          {loading ? "Processing..." : "Withdraw"}
+          {loading ? "Opening Razorpay..." : "Pay via Razorpay →"}
         </Button>
 
-        <p className="text-[10px] text-white/20 text-center mt-3">
-          Powered by Razorpay • Demo payout in test mode
-        </p>
+        <div className="flex items-center justify-center gap-2 mt-3">
+          <img src="https://razorpay.com/favicon.ico" alt="" className="w-3.5 h-3.5 opacity-40" />
+          <p className="text-[10px] text-white/20">Secured by Razorpay • Test Mode Active</p>
+        </div>
       </Card>
     </div>
   );
 }
 
 // ─── Success Toast ────────────────────────────────────────────────────────────
-function SuccessToast({ upi, amount, onClose }: { upi: string; amount: number; onClose: () => void }) {
+function SuccessToast({ upi, amount, paymentId, onClose }: {
+  upi: string; amount: number; paymentId: string; onClose: () => void;
+}) {
   useEffect(() => {
-    const t = setTimeout(onClose, 5000);
+    // Auto-dismiss
+    const t = setTimeout(onClose, 6000);
+
+    // 🎵 Play success sound
+    const audio = new Audio("/fahhhhh.mp3");
+    audio.volume = 1.0;
+    audio.play().catch(() => {}); // silent fail if browser blocks autoplay
+
     return () => clearTimeout(t);
   }, [onClose]);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 bg-white text-black rounded-2xl px-5 py-4 shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-4">
-      <CheckCircle2 size={20} className="text-green-600 shrink-0" />
-      <div>
-        <p className="text-sm font-semibold">₹{amount.toFixed(2)} sent!</p>
-        <p className="text-xs text-black/50">{upi}</p>
+    <div className="fixed bottom-6 right-6 z-50 bg-white text-black rounded-2xl px-5 py-4 shadow-2xl flex items-start gap-3 max-w-sm animate-in slide-in-from-bottom-4">
+      <CheckCircle2 size={20} className="text-green-600 shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold">₹{amount.toFixed(2)} withdrawn!</p>
+        <p className="text-xs text-black/50 truncate">→ {upi}</p>
+        <p className="text-[10px] text-black/30 font-mono truncate">{paymentId}</p>
       </div>
-      <button onClick={onClose} className="ml-2 text-black/30 hover:text-black"><X size={14}/></button>
+      <button onClick={onClose} className="text-black/20 hover:text-black/50 shrink-0">
+        <X size={14} />
+      </button>
     </div>
   );
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function InventoryPage() {
-  const { data: session } = useSession();
-  const [profile, setProfile]         = useState<UserProfile | null>(null);
+  const { data: session }     = useSession();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [loading, setLoading]         = useState(true);
+  const [loading, setLoading] = useState(true);
   const [showWithdraw, setShowWithdraw] = useState(false);
-  const [toast, setToast]             = useState<{ upi: string; amount: number } | null>(null);
+  const [toast, setToast]     = useState<{ upi: string; amount: number; paymentId: string } | null>(null);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -169,57 +263,48 @@ export default function InventoryPage() {
       if (pRes.ok) { const d = await pRes.json(); setProfile(d.user); }
       if (tRes.ok) {
         const d = await tRes.json();
-        // Show INR txns + WITHDRAWAL txns on inventory page
-        setTransactions(
-          (d.transactions || []).filter((tx: any) =>
-            tx.currency === "INR" || tx.type === "WITHDRAWAL" || tx.type === "RECEIVED"
-          )
-        );
+        setTransactions((d.transactions || []).filter((tx: any) =>
+          tx.type === "WITHDRAWAL" || tx.type === "RECEIVED"
+        ));
       }
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  const handleWithdrawSuccess = (newBal: number, upi: string, amount: number) => {
+  const handleSuccess = (newBal: number, upi: string, amount: number, paymentId: string) => {
     setProfile(prev => prev ? { ...prev, inrBalance: newBal } : prev);
     setShowWithdraw(false);
-    setToast({ upi, amount });
-    // Refresh transactions
-    fetch("/api/transactions")
-      .then(r => r.json())
-      .then(d => setTransactions(
-        (d.transactions || []).filter((tx: any) =>
-          tx.currency === "INR" || tx.type === "WITHDRAWAL" || tx.type === "RECEIVED"
-        )
-      ));
+    setToast({ upi, amount, paymentId });
+    fetch("/api/transactions").then(r => r.json()).then(d =>
+      setTransactions((d.transactions || []).filter((tx: any) =>
+        tx.type === "WITHDRAWAL" || tx.type === "RECEIVED"
+      ))
+    );
   };
 
   if (loading) {
     return (
-      <div className="flex">
-        <AppSidebar />
-        <div className="flex-1 lg:ml-60 pt-20 pb-12 px-4 sm:px-8 max-w-4xl flex items-center justify-center min-h-screen">
+      <div className="flex"><AppSidebar />
+        <div className="flex-1 lg:ml-60 pt-20 flex items-center justify-center min-h-screen">
           <div className="w-8 h-8 border-2 border-white/15 border-t-white/50 rounded-full animate-spin" />
         </div>
       </div>
     );
   }
 
-  const inrBal = Number(profile?.inrBalance || 0);
+  const inrBal  = Number(profile?.inrBalance || 0);
+  const userName = profile?.name || session?.user?.name || "User";
 
   return (
     <div className="flex">
       <AppSidebar />
       <div className="flex-1 lg:ml-60 pt-20 pb-12 px-4 sm:px-8 max-w-4xl">
         <h1 className="text-2xl font-bold text-white mb-2">Inventory</h1>
-        <p className="text-sm text-white/35 mb-8">Your SWYFTPAY INR wallet — receives converted payments</p>
+        <p className="text-sm text-white/35 mb-8">Your SwyftPay INR wallet</p>
 
         {/* Balance Card */}
         <Card className="p-8 mb-8" glow>
           <div className="flex items-center gap-2 mb-2 text-white/50 text-sm font-medium">
-            <Banknote size={16} />
-            <span>INR Application Balance</span>
+            <Banknote size={16} /> <span>INR Application Balance</span>
           </div>
           <p className="text-5xl font-bold text-white mb-6 tracking-tight">{formatINR(inrBal)}</p>
 
@@ -229,30 +314,29 @@ export default function InventoryPage() {
               variant="secondary"
               className="flex-1"
               onClick={() => setShowWithdraw(true)}
-              disabled={inrBal <= 0}
+              disabled={inrBal < 1}
             >
-              <ArrowUpRight size={16} /> Withdraw to UPI
+              <ArrowUpRight size={16} /> Withdraw via Razorpay
             </Button>
             <Button size="lg" variant="secondary" className="flex-1" disabled>
               <CreditCard size={16} /> Cards (soon)
             </Button>
           </div>
 
-          {inrBal <= 0 && (
+          {inrBal < 1 && (
             <p className="text-xs text-white/25 mt-4 text-center">
-              INR balance is credited when someone sends you AMOY via SwyftPay
+              INR is credited when someone sends you AMOY via SwyftPay
             </p>
           )}
         </Card>
 
         {/* How it works */}
         <Card className="p-4 mb-8 border border-white/[0.04]">
-          <p className="text-xs text-white/40 font-medium mb-2">How this works</p>
+          <p className="text-xs text-white/40 font-medium mb-2">Payment flow</p>
           <div className="space-y-1.5">
-            <p className="text-xs text-white/25">1. Someone sends you AMOY via SwyftPay</p>
-            <p className="text-xs text-white/25">2. AMOY → locked in escrow → released to admin treasury</p>
-            <p className="text-xs text-white/25">3. INR equivalent credited here (₹7500/AMOY rate)</p>
-            <p className="text-xs text-white/25">4. Withdraw to your UPI ID anytime</p>
+            <p className="text-xs text-white/25">1. Receive AMOY → INR credited here at ₹7500/AMOY</p>
+            <p className="text-xs text-white/25">2. Enter UPI + amount → Razorpay checkout opens</p>
+            <p className="text-xs text-white/25">3. Confirm in Razorpay → balance deducted → ₹ transferred</p>
           </div>
         </Card>
 
@@ -269,15 +353,16 @@ export default function InventoryPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white/80 font-medium truncate">
-                    {tx.type === "WITHDRAWAL" ? `To: ${tx.counterpartyName}` : tx.counterpartyName || "Received"}
+                    {tx.type === "WITHDRAWAL" ? `→ ${tx.counterpartyName}` : tx.counterpartyName || "Received"}
                   </p>
                   <p className="text-[11px] text-white/25">
-                    {tx.type === "WITHDRAWAL" ? "UPI Withdrawal" : "Payment received"} • {tx.createdAt ? formatDate(tx.createdAt) : "—"}
+                    {tx.type === "WITHDRAWAL" ? "Razorpay withdrawal" : "Payment received"}
+                    {tx.createdAt ? ` • ${formatDate(tx.createdAt)}` : ""}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-semibold text-white/60">
-                    {tx.type === "WITHDRAWAL" ? "−" : "+"} {formatINR(tx.inrEquivalent || tx.amount || 0)}
+                    {tx.type === "WITHDRAWAL" ? "−" : "+"}{formatINR(tx.inrEquivalent || tx.amount || 0)}
                   </p>
                 </div>
               </Card>
@@ -296,8 +381,9 @@ export default function InventoryPage() {
       {showWithdraw && (
         <WithdrawModal
           balance={inrBal}
+          userName={userName}
           onClose={() => setShowWithdraw(false)}
-          onSuccess={handleWithdrawSuccess}
+          onSuccess={handleSuccess}
         />
       )}
 
@@ -306,6 +392,7 @@ export default function InventoryPage() {
         <SuccessToast
           upi={toast.upi}
           amount={toast.amount}
+          paymentId={toast.paymentId}
           onClose={() => setToast(null)}
         />
       )}
