@@ -1,4 +1,3 @@
-supabase Transaction pooler api key: postgresql://postgres.kbtuskvfqdpoplbaehll:[SUSHOVAN_GHOSH_1908]@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres
 
 
 
