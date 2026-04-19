@@ -21,6 +21,9 @@ export function Navbar() {
   const { data: session } = useSession();
   const isLoggedIn = !!session?.user;
 
+  // Landing page has its own custom navbar
+  if (pathname === "/") return null;
+
   const handleSignOut = async () => {
     await signOut();
     window.location.href = "/";
@@ -29,12 +32,11 @@ export function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <div
-        className="mx-auto px-6 py-4 flex items-center justify-between"
-        style={{
-          background: "rgba(0,0,0,0.85)",
-          backdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
+        className="mx-auto px-6 py-4 flex items-center justify-between transition-all duration-500"
+        style={pathname === "/"
+          ? { background: "transparent", borderBottom: "none" }
+          : { background: "rgba(0,0,0,0.85)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }
+        }
       >
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">

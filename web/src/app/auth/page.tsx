@@ -151,18 +151,27 @@ export default function AuthPage() {
   // ─── Loading State ───
   if (isPending) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#060606]">
+        <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover z-0">
+          <source src="https://res.cloudinary.com/dfonotyfb/video/upload/v1775585556/dds3_1_rqhg7x.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 z-[1]" style={{ background: "rgba(0,0,0,0.55)" }} />
+        <div className="relative z-10 w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 pt-20 pb-12">
-      {/* Background glow */}
-      <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(255,255,255,0.02) 0%, transparent 70%)" }}
+    <div className="relative min-h-screen flex items-center justify-center px-6 pt-20 pb-12 overflow-hidden bg-[#060606]">
+
+      {/* Same video background as landing page */}
+      <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover z-0">
+        <source src="https://res.cloudinary.com/dfonotyfb/video/upload/v1775585556/dds3_1_rqhg7x.mp4" type="video/mp4" />
+      </video>
+
+      {/* Dark overlay */}
+      <div className="absolute inset-0 z-[1] pointer-events-none"
+        style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.40) 50%, rgba(6,6,6,0.80) 100%)" }}
       />
 
       <div className="relative z-10 w-full max-w-md">

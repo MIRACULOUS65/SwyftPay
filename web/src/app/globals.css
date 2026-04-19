@@ -35,7 +35,9 @@ html {
 }
 
 body {
-  background: #000000;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(200,205,230,0.13) 0%, transparent 65%),
+    #0c0d14;
   color: #F5F5F5;
   font-family: var(--font-sans);
   overflow-x: hidden;
@@ -75,6 +77,14 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* ─── Spotlight background (app pages) ─── */
+.spotlight-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(200,205,230,0.13) 0%, transparent 65%),
+    #0c0d14;
+  min-height: 100vh;
 }
 
 /* ─── Keyframes ─── */

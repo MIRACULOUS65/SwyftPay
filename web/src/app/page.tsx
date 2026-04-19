@@ -1,239 +1,265 @@
+"use client";
+import { useState } from "react";
 import Link from "next/link";
-import { Footer } from "@/components/layout/Footer";
+import { useSession, signOut } from "@/lib/auth-client";
 import {
-  ChevronRight, ArrowRight, QrCode, Shield, Zap, Wallet,
-  Users, ArrowLeftRight, Lock, Timer, CheckCircle2, Sparkles,
-  ScanLine, Globe
+  ArrowRight, QrCode, Shield, Zap, Wallet, Zap as ZapIcon,
+  ArrowLeftRight, Lock, Timer, CheckCircle2, Sparkles, ScanLine, ChevronRight, LogOut,
 } from "lucide-react";
 
-/* ─── Stats strip data ─── */
+/* ─── Data ─────────────────────────────────────────────────────────────────── */
 const proofItems = [
-  { metric: "< 2s", label: "Settlement Speed", icon: Timer },
-  { metric: "0%", label: "Platform Fee", icon: Sparkles },
-  { metric: "100%", label: "Non-Custodial", icon: Lock },
-  { metric: "Escrow", label: "Protected", icon: Shield },
+  { metric: "< 2s",   label: "Settlement Speed",  icon: Timer },
+  { metric: "0%",     label: "Platform Fee",       icon: Sparkles },
+  { metric: "100%",   label: "Non-Custodial",      icon: Lock },
+  { metric: "Escrow", label: "Protected",          icon: Shield },
 ];
 
-/* ─── How it works steps ─── */
 const steps = [
-  { step: "01", title: "Scan QR", desc: "Scan the receiver's QR code with your camera. Their payment identity is embedded.", icon: ScanLine },
-  { step: "02", title: "Choose Currency", desc: "Select whether to pay in AMOY (crypto) or INR. The receiver gets value in their preferred currency.", icon: ArrowLeftRight },
-  { step: "03", title: "Escrow & Lock", desc: "Rate is locked. Crypto is held in a smart contract escrow for safety.", icon: Lock },
-  { step: "04", title: "Settled", desc: "Once verified, value is delivered. Receiver is credited instantly.", icon: CheckCircle2 },
+  { step: "01", title: "Scan QR",       desc: "Scan the receiver's QR code. Their wallet address is embedded — no typing needed.", icon: ScanLine },
+  { step: "02", title: "Send AMOY",     desc: "Confirm the amount. Your AMOY goes through blockchain escrow — transparent and safe.", icon: ArrowLeftRight },
+  { step: "03", title: "Escrow & Lock", desc: "Rate is locked at initiation. Smart contract holds funds until settlement completes.", icon: Lock },
+  { step: "04", title: "INR Credited",  desc: "Receiver is credited INR instantly. Withdraw via Razorpay anytime.", icon: CheckCircle2 },
 ];
 
-/* ─── Feature cards ─── */
 const features = [
-  { title: "Smart Dashboard", desc: "View all balances, recent transactions, and quick actions at a glance.", icon: Wallet },
-  { title: "Family Vault", desc: "Shared savings with multi-member controls, spending limits, and approvals.", icon: Shield },
-  { title: "Social Payments", desc: "Split bills, request payments, and settle with groups seamlessly.", icon: Users },
-  { title: "QR Transfers", desc: "One scan to send. The QR carries identity, address, and preferences.", icon: QrCode },
+  { title: "Smart Dashboard",   desc: "Real-time AMOY balance, INR wallet, recent transactions, and one-tap quick actions.",     icon: Wallet },
+  { title: "Escrow Payments",   desc: "Every transaction is backed by a Solidity smart contract. Funds never touch a middleman.", icon: Shield },
+  { title: "Razorpay Withdraw", desc: "Convert your INR balance to your bank or UPI — powered by Razorpay.",                    icon: Zap },
+  { title: "QR Transfers",      desc: "One scan. Address auto-fills. Pay crypto — receiver gets INR.",                          icon: QrCode },
 ];
 
-/* ─── Trust items ─── */
-const trustItems = [
-  { title: "Escrow-Backed Safety", desc: "Every crypto transaction passes through a smart contract. Funds are never at risk of partial execution." },
-  { title: "Non-Custodial Architecture", desc: "You always control your wallet. SWYFTPAY never accesses your private keys or stores seed phrases." },
-  { title: "Deterministic Settlement", desc: "Exchange rates are locked at initiation. What you see is what the receiver gets, every time." },
-];
+type Tab = "home" | "how-it-works" | "features";
 
+/* ─── Page ──────────────────────────────────────────────────────────────────── */
 export default function LandingPage() {
+  const [tab, setTab] = useState<Tab>("home");
+  const { data: session } = useSession();
+  const isLoggedIn = !!session?.user;
+
+  const handleSignOut = async () => {
+    await signOut();
+    window.location.href = "/";
+  };
+
   return (
-    <div className="relative">
-      {/* ═══ HERO SECTION ═══ */}
-      <section className="relative min-h-screen flex items-center justify-center px-6 pt-20 overflow-hidden">
-        {/* Background effects */}
-        <div className="absolute inset-0">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)" }} />
-          <div className="absolute top-20 right-20 w-2 h-2 rounded-full bg-white/10" />
-          <div className="absolute bottom-40 left-32 w-1 h-1 rounded-full bg-white/15" />
-          <div className="absolute top-1/3 right-1/4 w-1.5 h-1.5 rounded-full bg-white/8" />
-        </div>
+    <div className="relative h-screen w-full overflow-hidden bg-[#060606]">
 
-        <div className="relative z-10 max-w-4xl text-center">
-          {/* Pre-headline badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/[0.04] mb-8 animate-fade-up">
-            <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse" />
-            <span className="text-xs text-white/50 font-medium">Live on Polygon Amoy Testnet</span>
+      {/* ── Background Video ────────────────────────────────────────────── */}
+      <video autoPlay loop muted playsInline
+        className="absolute inset-0 w-full h-full object-cover z-0">
+        <source src="https://res.cloudinary.com/dfonotyfb/video/upload/v1775585556/dds3_1_rqhg7x.mp4" type="video/mp4" />
+      </video>
+
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 z-[1] pointer-events-none"
+        style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.20) 40%, rgba(6,6,6,0.82) 100%)" }}
+      />
+
+      {/* ── Full-page layout ────────────────────────────────────────────── */}
+      <div className="relative z-10 h-full flex flex-col">
+
+        {/* ══════════════════════════════════════════════════════════════
+            OWN NAVBAR — transparent, logo left | tabs center | cta right
+            ══════════════════════════════════════════════════════════════ */}
+        <header className="flex items-center justify-between px-8 py-5 shrink-0">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center">
+              <ZapIcon size={13} className="text-black" />
+            </div>
+            <span className="text-white font-bold text-base tracking-tight">SWYFTPAY</span>
+          </Link>
+
+          {/* Center — tab pills (replacing the old "Home / How it works / Features" nav links) */}
+          <nav className="absolute left-1/2 -translate-x-1/2">
+            <div className="inline-flex items-center gap-0.5 px-1.5 py-1.5 rounded-2xl border border-white/10 bg-black/30 backdrop-blur-md">
+              {(["home", "how-it-works", "features"] as Tab[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`px-5 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200
+                    ${tab === t
+                      ? "bg-white text-black shadow-sm"
+                      : "text-white/55 hover:text-white/80 hover:bg-white/5"
+                    }`}
+                >
+                  {t === "home" ? "Home" : t === "how-it-works" ? "How it works" : "Features"}
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          {/* Right — auth buttons (same hrefs as global navbar) */}
+          <div className="flex items-center gap-3">
+            {isLoggedIn ? (
+              <>
+                <Link href="/dashboard"
+                  className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-white text-black hover:bg-white/90 transition-all">
+                  Dashboard <ChevronRight size={13} />
+                </Link>
+                <button onClick={handleSignOut}
+                  className="text-white/40 hover:text-white/70 p-2 rounded-full hover:bg-white/5 transition-all">
+                  <LogOut size={14} />
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/auth"
+                  className="text-sm text-white/60 hover:text-white transition-colors px-2">
+                  Sign in
+                </Link>
+                <Link href="/auth"
+                  className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-white text-black hover:bg-white/90 transition-all">
+                  Get Started <ChevronRight size={13} />
+                </Link>
+              </>
+            )}
           </div>
+        </header>
 
-          {/* Main headline */}
-          <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold tracking-tight leading-[0.95] mb-6 animate-fade-up delay-100">
-            <span className="gradient-text">One QR.</span>
-            <br />
-            <span className="text-white">Any Currency.</span>
-          </h1>
+        {/* ══════════════════════════════════════════════════════════════
+            TAB CONTENT
+            ══════════════════════════════════════════════════════════════ */}
+        <div className="flex-1 flex items-center justify-center px-6 overflow-hidden">
 
-          {/* Sub-headline */}
-          <p className="text-base sm:text-lg text-white/45 max-w-xl mx-auto mb-10 animate-fade-up delay-200 leading-relaxed">
-            Pay with crypto. Receive in INR. SWYFTPAY abstracts the complexity of blockchain 
-            behind a simple scan-and-pay experience.
-          </p>
+          {/* ═══ HOME ═══ */}
+          {tab === "home" && (
+            <div className="max-w-5xl w-full text-center">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/15
+                              bg-black/30 backdrop-blur-md mb-6">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs text-white/70 font-medium tracking-wide">Live on Polygon Amoy Testnet</span>
+              </div>
 
-          {/* CTA buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up delay-300">
-            <Link
-              href="/dashboard"
-              className="group flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-black font-semibold text-sm hover:shadow-[0_0_30px_rgba(255,255,255,0.15)] transition-all duration-300"
-            >
-              Launch App
-              <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="flex items-center gap-2 px-8 py-4 rounded-2xl border border-white/10 text-white/70 font-medium text-sm hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300"
-            >
-              See How It Works
-            </Link>
-          </div>
+              <h1 className="mb-5 tracking-tight leading-[0.9]"
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: "clamp(3.5rem, 10vw, 8.5rem)", fontWeight: 900 }}>
+                <span style={{ background: "linear-gradient(160deg,#fff 0%,rgba(255,255,255,0.7) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                  Pay Crypto.
+                </span>
+                <br />
+                <span style={{ background: "linear-gradient(160deg,rgba(255,255,255,0.55) 0%,rgba(255,255,255,0.25) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                  Receive INR.
+                </span>
+              </h1>
 
-          {/* Product preview frame */}
-          <div className="mt-16 mx-auto max-w-2xl animate-fade-up delay-500">
-            <div
-              className="rounded-2xl p-[1px]"
-              style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.03) 100%)" }}
-            >
-              <div className="rounded-2xl p-8 sm:p-12" style={{ background: "#0A0A0A" }}>
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <p className="text-xs text-white/30 uppercase tracking-widest mb-1">Total Balance</p>
-                    <p className="text-3xl sm:text-4xl font-bold text-white">₹45,820</p>
+              <p className="text-sm sm:text-base text-white/55 max-w-lg mx-auto mb-10 leading-relaxed">
+                SwyftPay turns blockchain complexity into a single QR scan. Send AMOY —
+                your receiver sees rupees. Instant. Escrow-backed. No middleman.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+                {/* Launch App → /dashboard (SAME) */}
+                <Link href="/dashboard"
+                  className="group flex items-center gap-2.5 px-9 py-4 rounded-2xl bg-white text-black font-bold text-sm
+                             hover:shadow-[0_0_40px_rgba(255,255,255,0.20)] hover:scale-[1.02] transition-all duration-300">
+                  Launch App
+                  <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+                {/* "See How It Works" switches tab (SAME intent) */}
+                <button onClick={() => setTab("how-it-works")}
+                  className="flex items-center gap-2 px-9 py-4 rounded-2xl border border-white/20 text-white/80 font-medium text-sm
+                             backdrop-blur-sm bg-black/20 hover:bg-white/10 hover:border-white/30 transition-all duration-300">
+                  See How It Works
+                </button>
+              </div>
+
+              {/* Stats strip */}
+              <div className="flex flex-wrap items-center justify-center gap-8">
+                {proofItems.map(({ metric, label, icon: Icon }) => (
+                  <div key={label} className="flex items-center gap-2.5">
+                    <Icon size={14} className="text-white/30" />
+                    <span className="text-sm font-bold text-white">{metric}</span>
+                    <span className="text-xs text-white/35">{label}</span>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.08]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/50 animate-pulse" />
-                    <span className="text-[11px] text-white/50">Connected</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 gap-3">
-                  {["Send", "Receive", "Scan", "Vault"].map((label) => (
-                    <div key={label} className="flex flex-col items-center gap-2 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-                      <div className="w-8 h-8 rounded-lg bg-white/[0.08] flex items-center justify-center">
-                        <Zap size={14} className="text-white/60" />
-                      </div>
-                      <span className="text-[10px] text-white/40">{label}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ HOW IT WORKS ═══ */}
+          {tab === "how-it-works" && (
+            <div className="max-w-5xl w-full">
+              <div className="text-center mb-10">
+                <p className="text-xs text-white/25 uppercase tracking-[0.25em] mb-3">How it works</p>
+                <h2 className="text-white mb-3"
+                  style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: "clamp(2rem,5vw,4rem)", fontWeight: 700 }}>
+                  Four steps. One scan.
+                </h2>
+                <p className="text-sm text-white/40 max-w-md mx-auto leading-relaxed">
+                  From QR to rupees — blockchain, conversion, escrow, and UPI payout. Automatic.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {steps.map(({ step, title, desc, icon: Icon }) => (
+                  <div key={step}
+                    className="group p-6 rounded-2xl border border-white/10 bg-black/30 backdrop-blur-md
+                               hover:bg-black/50 hover:border-white/20 transition-all duration-300">
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="text-[11px] font-mono text-white/20">{step}</span>
+                      <Icon size={16} className="text-white/35 group-hover:text-white/70 transition-colors" />
                     </div>
-                  ))}
-                </div>
+                    <h3 className="text-sm font-semibold text-white mb-2">{title}</h3>
+                    <p className="text-xs text-white/35 leading-relaxed">{desc}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-center gap-4 mt-8">
+                <button onClick={() => setTab("home")} className="text-xs text-white/35 hover:text-white/60 transition-colors">← Back</button>
+                {/* Get Started → /dashboard (SAME) */}
+                <Link href="/dashboard"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-black text-sm font-semibold
+                             hover:shadow-[0_0_30px_rgba(255,255,255,0.15)] transition-all">
+                  Get Started <ArrowRight size={14} />
+                </Link>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
+          )}
 
-      {/* ═══ PROOF STRIP ═══ */}
-      <section className="px-6 py-16 border-y" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-        <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-10">
-          {proofItems.map(({ metric, label, icon: Icon }) => (
-            <div key={label} className="text-center">
-              <Icon size={20} className="mx-auto mb-3 text-white/30" />
-              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">{metric}</p>
-              <p className="text-xs text-white/35">{label}</p>
+          {/* ═══ FEATURES ═══ */}
+          {tab === "features" && (
+            <div className="max-w-5xl w-full">
+              <div className="text-center mb-10">
+                <p className="text-xs text-white/25 uppercase tracking-[0.25em] mb-3">Features</p>
+                <h2 className="text-white mb-3"
+                  style={{ fontFamily: "var(--font-playfair), Georgia, serif", fontSize: "clamp(2rem,5vw,4rem)", fontWeight: 700 }}>
+                  Built for real payments.
+                </h2>
+                <p className="text-sm text-white/40 max-w-md mx-auto">More than a wallet — a cross-currency payment OS.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {features.map(({ title, desc, icon: Icon }) => (
+                  <div key={title}
+                    className="group p-7 rounded-2xl border border-white/10 bg-black/30 backdrop-blur-md
+                               hover:bg-black/50 hover:border-white/20 transition-all duration-300">
+                    <div className="w-10 h-10 rounded-xl bg-white/[0.08] flex items-center justify-center mb-4 group-hover:bg-white/[0.14] transition-colors">
+                      <Icon size={18} className="text-white/50" />
+                    </div>
+                    <h3 className="text-base font-semibold text-white mb-2">{title}</h3>
+                    <p className="text-sm text-white/35 leading-relaxed">{desc}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-center gap-4 mt-8">
+                <button onClick={() => setTab("home")} className="text-xs text-white/35 hover:text-white/60 transition-colors">← Back</button>
+                {/* Connect Wallet → /auth (SAME) */}
+                <Link href="/auth"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl border border-white/20 text-white/70 text-sm font-medium
+                             backdrop-blur-sm bg-black/20 hover:bg-white/10 transition-all">
+                  Connect Wallet
+                </Link>
+                {/* Launch App → /dashboard (SAME) */}
+                <Link href="/dashboard"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-black text-sm font-semibold
+                             hover:shadow-[0_0_30px_rgba(255,255,255,0.15)] transition-all">
+                  Launch App <ArrowRight size={14} />
+                </Link>
+              </div>
             </div>
-          ))}
-        </div>
-      </section>
+          )}
 
-      {/* ═══ HOW IT WORKS ═══ */}
-      <section id="how-it-works" className="px-6 py-24">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs text-white/30 uppercase tracking-[0.2em] mb-4">How it works</p>
-            <h2 className="text-3xl sm:text-5xl font-bold text-white mb-4">Four steps. One experience.</h2>
-            <p className="text-sm text-white/40 max-w-md mx-auto">From scan to settlement, SWYFTPAY handles conversion, escrow, and verification automatically.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {steps.map(({ step, title, desc, icon: Icon }) => (
-              <div
-                key={step}
-                className="group p-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.12] transition-all duration-300"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-[11px] font-mono text-white/20">{step}</span>
-                  <Icon size={18} className="text-white/40 group-hover:text-white/70 transition-colors" />
-                </div>
-                <h3 className="text-base font-semibold text-white mb-2">{title}</h3>
-                <p className="text-xs text-white/35 leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
         </div>
-      </section>
-
-      {/* ═══ FEATURE GRID ═══ */}
-      <section id="features" className="px-6 py-24" style={{ background: "#0A0A0A" }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs text-white/30 uppercase tracking-[0.2em] mb-4">Features</p>
-            <h2 className="text-3xl sm:text-5xl font-bold text-white mb-4">Built for real payments.</h2>
-            <p className="text-sm text-white/40 max-w-md mx-auto">More than a wallet. A payment operating system.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {features.map(({ title, desc, icon: Icon }) => (
-              <div
-                key={title}
-                className="group p-8 rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all duration-300"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-white/[0.06] flex items-center justify-center mb-5 group-hover:bg-white/[0.10] transition-colors">
-                  <Icon size={20} className="text-white/50" />
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-                <p className="text-sm text-white/35 leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ TRUST & SAFETY ═══ */}
-      <section className="px-6 py-24">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs text-white/30 uppercase tracking-[0.2em] mb-4">Trust & Safety</p>
-            <h2 className="text-3xl sm:text-5xl font-bold text-white mb-4">Money moves safely.</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {trustItems.map(({ title, desc }) => (
-              <div
-                key={title}
-                className="p-6 rounded-2xl border border-white/[0.06] bg-white/[0.02]"
-              >
-                <Shield size={20} className="text-white/30 mb-4" />
-                <h3 className="text-base font-semibold text-white mb-2">{title}</h3>
-                <p className="text-xs text-white/35 leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ FINAL CTA ═══ */}
-      <section className="px-6 py-24" style={{ background: "#0A0A0A" }}>
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-5xl font-bold text-white mb-4">
-            Ready to pay without borders?
-          </h2>
-          <p className="text-sm text-white/40 mb-10 max-w-md mx-auto">
-            Scan. Choose. Settle. SWYFTPAY makes cross-currency payments as simple as a QR code.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/dashboard"
-              className="group flex items-center gap-2 px-10 py-4 rounded-2xl bg-white text-black font-semibold text-sm hover:shadow-[0_0_30px_rgba(255,255,255,0.15)] transition-all duration-300"
-            >
-              Get Started <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-            <Link
-              href="/auth"
-              className="flex items-center gap-2 px-10 py-4 rounded-2xl border border-white/10 text-white/60 font-medium text-sm hover:bg-white/[0.04] hover:text-white/80 transition-all duration-300"
-            >
-              Connect Wallet
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
+      </div>
     </div>
   );
 }
