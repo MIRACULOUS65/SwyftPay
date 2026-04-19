@@ -5,8 +5,8 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useSession, signOut } from "@/lib/auth-client";
 import {
-  Zap, LayoutDashboard, QrCode, Wallet, Shield,
-  Users, ArrowLeftRight, Menu, X, ChevronRight, LogOut, User
+  Zap, LayoutDashboard, QrCode, Wallet,
+  ArrowLeftRight, Menu, X, ChevronRight, LogOut
 } from "lucide-react";
 
 const navLinks = [
@@ -162,13 +162,12 @@ export function Navbar() {
 // Sidebar for app pages
 const sidebarLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/wallet", label: "Wallet", icon: Wallet },
+  { href: "/wallet",    label: "Wallet",    icon: Wallet },
   { href: "/inventory", label: "Inventory", icon: Zap },
-  { href: "/scan", label: "Scan QR", icon: QrCode },
-  { href: "/send", label: "Send", icon: ArrowLeftRight },
-  { href: "/vault", label: "Family Vault", icon: Shield },
-  { href: "/social", label: "Social Pay", icon: Users },
+  { href: "/scan",      label: "Scan QR",   icon: QrCode },
+  { href: "/send",      label: "Send",      icon: ArrowLeftRight },
 ];
+
 
 export function AppSidebar() {
   const pathname = usePathname();

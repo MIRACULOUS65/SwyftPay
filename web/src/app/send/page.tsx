@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppSidebar } from "@/components/layout/Navbar";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +13,10 @@ import {
   AlertTriangle, ExternalLink, Copy
 } from "lucide-react";
 
+// ─── Admin wallet: all AMOY pools here (central treasury) ─────────────────
+// Deployer: 0x8cF19F... | Admin pool: 0x1ABF...
+const ADMIN_WALLET = "0x1ABF6e9c7fCa066BdF47467817A11868bEF9EC2a";
+
 const FIXED_RATE_INR = 7500; // ₹7500 per 1 AMOY
 
 type Step = "form" | "review" | "signing" | "confirming" | "done" | "error";
@@ -22,9 +27,21 @@ export default function SendPage() {
   const [amoyBalance, setAmoyBalance] = useState("0.0000");
 
   // Form state
+  const searchParams = useSearchParams();
   const [receiverAddress, setReceiverAddress] = useState("");
+  const [receiverName, setReceiverName]       = useState("");
   const [amount, setAmount] = useState("");
   const [step, setStep] = useState<Step>("form");
+
+  // ─── Auto-fill from QR scan: /send?to=0x...&name=Alice ──────────────────
+  useEffect(() => {
+    const toAddr = searchParams.get("to");
+    const toName = searchParams.get("name");
+    if (toAddr && ethers.isAddress(toAddr)) {
+      setReceiverAddress(toAddr);
+      if (toName) setReceiverName(decodeURIComponent(toName));
+    }
+  }, [searchParams]);
 
   // Tx state
   const [txHash, setTxHash] = useState("");
@@ -116,9 +133,9 @@ export default function SendPage() {
       // Amoy's enforced floor is 25 gwei — hardcode it to keep fees minimal.
       const GAS_PRICE = ethers.parseUnits("25", "gwei");
 
-      // Estimate gas for the call
+      // Estimate gas — receiver is ADMIN_WALLET (all AMOY pools centrally)
       const gasEstimate = await router.createOrder.estimateGas(
-        receiverAddress,
+        ADMIN_WALLET,
         0, // CurrencyType.AMOY_TO_INR
         { value: amountWei }
       );
@@ -127,9 +144,11 @@ export default function SendPage() {
 
       setStep("confirming");
 
-      // Send the transaction
+      // Send the transaction — receiver = ADMIN_WALLET so all AMOY goes to treasury.
+      // The actual intended receiver (receiverAddress typed by user) is tracked in
+      // our DB toAddress field; the settle service uses it to credit INR.
       const tx = await router.createOrder(
-        receiverAddress,
+        ADMIN_WALLET,
         0, // AMOY_TO_INR
         {
           value:            amountWei,
@@ -265,10 +284,17 @@ export default function SendPage() {
               <input
                 type="text"
                 value={receiverAddress}
-                onChange={e => setReceiverAddress(e.target.value)}
+                onChange={e => { setReceiverAddress(e.target.value); setReceiverName(""); }}
                 placeholder="0x..."
                 className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm placeholder:text-white/20 focus:border-white/20 focus:outline-none transition-colors font-mono"
               />
+              {/* QR scan indicator */}
+              {receiverName && isValidAddress && (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400/70 animate-pulse" />
+                  <p className="text-xs text-green-400/70">Scanned from QR — paying <strong>{receiverName}</strong></p>
+                </div>
+              )}
               {receiverAddress && !isValidAddress && (
                 <p className="text-xs text-white/40 mt-1">Not a valid Ethereum address</p>
               )}

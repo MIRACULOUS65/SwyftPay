@@ -217,12 +217,9 @@ export default function DashboardPage() {
             <div className="flex justify-center">
               <div className="p-4 bg-white rounded-2xl">
                 <QRCodeSVG
-                  value={JSON.stringify({
-                    userId: profile?.id,
-                    walletAddress: walletAddr,
-                    preferredCurrency: profile?.preferredCurrency || "INR",
-                    name: userName,
-                  })}
+                  value={walletAddr
+                    ? `${typeof window !== "undefined" ? window.location.origin : ""}/send?to=${encodeURIComponent(walletAddr)}&name=${encodeURIComponent(userName)}`
+                    : ""}
                   size={140}
                   bgColor="#ffffff"
                   fgColor="#000000"
