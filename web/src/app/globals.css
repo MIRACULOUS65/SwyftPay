@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+/* ============================================================
+   SWYFTPAY — Global Design System
+   Monochrome black-first premium fintech aesthetic
+   ============================================================ */
+
+@theme inline {
+  /* ─── Colors ─── */
+  --color-bg:           #000000;
+  --color-surface-1:    #0A0A0A;
+  --color-surface-2:    #101010;
+  --color-elevated:     #151515;
+  --color-border:       rgba(255,255,255,0.08);
+  --color-border-strong: rgba(255,255,255,0.16);
+  --color-text:         #F5F5F5;
+  --color-text-2:       #B7B7B7;
+  --color-text-3:       #7A7A7A;
+  --color-divider:      rgba(255,255,255,0.06);
+  --color-glass:        rgba(255,255,255,0.04);
+  --color-glass-hover:  rgba(255,255,255,0.07);
+  --color-glow:         rgba(255,255,255,0.12);
+  --color-shadow:       rgba(0,0,0,0.55);
+
+  /* ─── Typography ─── */
+  --font-sans: var(--font-geist-sans), 'Inter', system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), 'JetBrains Mono', monospace;
+}
+
+/* ─── Base ─── */
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(200,205,230,0.13) 0%, transparent 65%),
+    #0c0d14;
+  color: #F5F5F5;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(255,255,255,0.15);
+  color: #F5F5F5;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ─── Glass Card Utility ─── */
+.glass {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+}
+
+.glass-strong {
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 24px;
+}
+
+/* ─── Gradient text ─── */
+.gradient-text {
+  background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.6) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Spotlight background (app pages) ─── */
+.spotlight-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(200,205,230,0.13) 0%, transparent 65%),
+    #0c0d14;
+  min-height: 100vh;
+}
+
+/* ─── Keyframes ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.8); }
+}
+
+@keyframes scanLine {
+  0%   { top: 0%; }
+  50%  { top: 90%; }
+  100% { top: 0%; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(255,255,255,0.05); }
+  50%       { box-shadow: 0 0 40px rgba(255,255,255,0.12); }
+}
+
+/* ─── Animation utilities ─── */
+.animate-fade-up {
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease both;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* ─── Focus styles ─── */
+*:focus-visible {
+  outline: 1px solid rgba(255,255,255,0.3);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Stagger delays ─── */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
