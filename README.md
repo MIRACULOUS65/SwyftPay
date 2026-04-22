@@ -1,8 +1,14 @@
 <div align="center">
+ 
+## 🎥 SwyftPay Demo
 
-<br/>
+[![SwyftPay Demo Video](./web/public/logo.png)](https://youtu.be/dmW97PE1v04)
 
-# ⚡ SwyftPay
+▶️ **[Watch Demo Video on Youtube](https://youtu.be/dmW97PE1v04)**
+
+
+Sentinel connects **Off-Chain AI** with **On-Chain Enforcement**, enabling smart contracts to assess wallet risk in real-time using Soroban.
+
 
 ### **Pay Crypto. Receive INR. One QR.**
 
